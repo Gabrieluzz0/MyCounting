@@ -14,6 +14,7 @@ export function levelInfo(xp=0) {
 }
 export function perfectSession(record) {return Boolean(record.finalCorrect && !record.assisted && record.checks?.length && record.checks.every(c=>c.correct&&!c.assisted));}
 export function sessionXP(record) {
+  if(record.mode==='training' && record.assisted)return record.finalCorrect && record.checks?.length && record.checks.every(c=>c.correct)?3:0;
   if(!perfectSession(record))return 0;
   if(record.mode==='sprint')return Math.round(10+Math.min(30,Math.max(5,record.cards))*2/3);
   if(record.mode==='training')return 70*Math.min(8,Math.max(1,record.decks));
@@ -60,12 +61,14 @@ export function applyCompletion(progress,record,seed,now=new Date(),options={}) 
  progress.totalCompleted++;progress.totalCards+=record.cards;progress.totalSuccess+=Number(success);
  if(!progress.activityDays.includes(today)){progress.activityDays.push(today);progress.activityDays.sort();progress.activityDays=progress.activityDays.slice(-3660);}
  progress.bestStreak=Math.max(progress.bestStreak,streakInfo(progress,now).current);
- const metrics=progress.daily.metrics;metrics.sessions++;metrics.cards+=record.cards;
+ const guided=record.mode==='training' && record.assisted;
+ const metrics=progress.daily.metrics;
+ if(!guided){metrics.sessions++;metrics.cards+=record.cards;
  // One answer per card position counts toward missions; repeated manual checks cannot farm progress.
  const uniqueChecks=new Map();for(const check of record.checks || [])if(check.correct&&!check.assisted)uniqueChecks.set(check.at,true);
- metrics.correctChecks+=uniqueChecks.size;metrics.successes+=Number(success);metrics.modes[record.mode]++;metrics.perfect[record.mode]+=Number(success);
+ metrics.correctChecks+=uniqueChecks.size;metrics.successes+=Number(success);metrics.modes[record.mode]++;metrics.perfect[record.mode]+=Number(success);}
  let missionXP=0;const completed=[];
- if(options.missions!==false)for(const mission of progress.daily.missions){if(!mission.claimed && missionValue(mission,metrics)>=mission.target){mission.claimed=true;missionXP+=mission.xp;completed.push(mission.title);}}
+ if(!guided && options.missions!==false)for(const mission of progress.daily.missions){if(!mission.claimed && missionValue(mission,metrics)>=mission.target){mission.claimed=true;missionXP+=mission.xp;completed.push(mission.title);}}
  progress.xp=Math.min(1e9,progress.xp+baseXP+missionXP);
  return {duplicate:false,baseXP,missionXP,totalXP:baseXP+missionXP,completed,levelUp:levelInfo(progress.xp).level>before,level:levelInfo(progress.xp).level,success};
 }
