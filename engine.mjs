@@ -1,7 +1,7 @@
 /** Hi-Lo core. No network, UI or storage dependencies. */
 export const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 export const SUITS = ['♠','♥','♦','♣'];
-export const MODES = ['training','sprint','grow','realistic'];
+export const MODES = ['training','truecount','sprint','grow','realistic'];
 export const valueOf = rank => ['2','3','4','5','6'].includes(rank) ? 1 : ['7','8','9'].includes(rank) ? 0 : -1;
 export const signed = number => number > 0 ? `+${number}` : number < 0 ? `−${Math.abs(number)}` : '0';
 export function createShoe(decks = 1, random = Math.random) {
@@ -16,7 +16,7 @@ export function createSession(config = {}) {
   const decks = mode==='grow'?2:config.decks ?? 1;
   const shoe = createShoe(decks,config.random);
   const sprintLength=Number.isFinite(Number(config.sprintLength))?Math.min(30,Math.max(5,Math.round(Number(config.sprintLength)))):15;
-  const countType=mode==='training'&&config.countType==='true'?'true':'running';
+  const countType=mode==='truecount'?'true':'running';
   return {shoe,mode,decks,countType,limit:mode==='sprint'?sprintLength:countType==='true'?Math.floor(shoe.length*.75):shoe.length,index:0,count:0,checks:[],assisted:false,speed:mode==='grow'?2:config.speed??1.5,peakSpeed:mode==='grow'?2:config.speed??1.5,growths:0};
 }
 export function deal(session) {
@@ -26,7 +26,7 @@ export function deal(session) {
   return card;
 }
 export function trueCount(session) {
-  const remaining = session.shoe.length - session.index;
+  const remaining = session.shoe.length - (session.mode==='realistic'?session.dealt:session.index);
   return remaining > 0 ? session.count / (remaining/52) : null;
 }
 export function parseAnswer(input) {
@@ -48,7 +48,7 @@ export function checkAnswer(session, input, assisted = false) {
 }
 export function filterSessions(sessions,mode='all') {return mode==='all'?sessions:sessions.filter(s=>s.mode===mode);}
 export function trimHistory(sessions) {
-  const totals={training:0,sprint:0,grow:0,realistic:0};
+  const totals={training:0,sprint:0,grow:0,realistic:0,truecount:0};
   return sessions.filter(s=>MODES.includes(s.mode) && ++totals[s.mode]<=100);
 }
 export function summarize(sessions,mode='all') {

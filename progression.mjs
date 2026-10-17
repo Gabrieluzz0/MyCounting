@@ -14,10 +14,10 @@ export function levelInfo(xp=0) {
 }
 export function perfectSession(record) {return Boolean(record.finalCorrect && !record.assisted && record.checks?.length && record.checks.every(c=>c.correct&&!c.assisted));}
 export function sessionXP(record) {
-  if(record.mode==='training' && record.assisted)return record.finalCorrect && record.checks?.length && record.checks.every(c=>c.correct)?3:0;
+  if(['training','truecount'].includes(record.mode) && record.assisted)return record.finalCorrect && record.checks?.length && record.checks.every(c=>c.correct)?3:0;
   if(!perfectSession(record))return 0;
   if(record.mode==='sprint')return Math.round(10+Math.min(30,Math.max(5,record.cards))*2/3);
-  if(record.mode==='training')return Math.round(70*Math.min(8,Math.max(1,record.decks))*(record.countType==='true'?.75:1));
+  if(['training','truecount'].includes(record.mode))return Math.round(70*Math.min(8,Math.max(1,record.decks))*(record.mode==='truecount'||record.countType==='true'?.75:1));
   if(record.mode==='realistic')return 25*Math.min(5,Math.max(1,record.rounds||5));
   return record.mode==='grow'?220:0;
 }
@@ -42,7 +42,7 @@ export function missionsForDay(key,seed='mycounting') {
  const random=randomSource(hash(seed+'|'+key));
  return [0,1,2].map(group=>{const choices=MISSION_POOL.filter(m=>m.group===group);return {...choices[Math.floor(random()*choices.length)],claimed:false};});
 }
-const freshMetrics=()=>({sessions:0,cards:0,correctChecks:0,successes:0,modes:{training:0,sprint:0,grow:0,realistic:0},perfect:{training:0,sprint:0,grow:0,realistic:0}});
+const freshMetrics=()=>({sessions:0,cards:0,correctChecks:0,successes:0,modes:{training:0,sprint:0,grow:0,realistic:0,truecount:0},perfect:{training:0,sprint:0,grow:0,realistic:0,truecount:0}});
 export function newProgress(seed,now=new Date()) {return {schema:XP_SCHEMA,xp:0,totalCompleted:0,totalSuccess:0,totalCards:0,activityDays:[],bestStreak:0,ledger:[],daily:{day:dayKey(now),metrics:freshMetrics(),missions:missionsForDay(dayKey(now),seed)}};}
 export function refreshDay(progress,seed,now=new Date()) {const today=dayKey(now);if(progress.daily.day!==today){progress.daily={day:today,metrics:freshMetrics(),missions:missionsForDay(today,seed)};return true;}return false;}
 export function streakInfo(progress,now=new Date()) {
@@ -62,7 +62,7 @@ export function applyCompletion(progress,record,seed,now=new Date(),options={}) 
  progress.totalCompleted++;progress.totalCards+=record.cards;progress.totalSuccess+=Number(success);
  if(!progress.activityDays.includes(today)){progress.activityDays.push(today);progress.activityDays.sort();progress.activityDays=progress.activityDays.slice(-3660);}
  progress.bestStreak=Math.max(progress.bestStreak,streakInfo(progress,now).current);
- const guided=record.mode==='training' && record.assisted;
+ const guided=['training','truecount'].includes(record.mode) && record.assisted;
  const metrics=progress.daily.metrics;
  if(!guided){metrics.sessions++;metrics.cards+=record.cards;
  // One answer per card position counts toward missions; repeated manual checks cannot farm progress.
@@ -80,7 +80,7 @@ export function restoreProgress(raw,seed,history=[],now=new Date()) {
   if(raw.daily?.day===fresh.daily.day){
    const old=raw.daily.metrics || {};const metrics=freshMetrics();
    for(const key of ['sessions','cards','correctChecks','successes'])metrics[key]=safeInt(old[key]);
-   for(const type of ['modes','perfect'])for(const mode of ['training','sprint','grow','realistic'])metrics[type][mode]=safeInt(old[type]?.[mode]);
+   for(const type of ['modes','perfect'])for(const mode of ['training','truecount','sprint','grow','realistic'])metrics[type][mode]=safeInt(old[type]?.[mode]);
    const claimed=new Set(Array.isArray(raw.daily.missions)?raw.daily.missions.filter(m=>m?.claimed===true).map(m=>m.id):[]);
    p.daily={...fresh.daily,metrics,missions:fresh.daily.missions.map(m=>({...m,claimed:claimed.has(m.id)}))};
   }
