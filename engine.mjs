@@ -12,11 +12,11 @@ export function createShoe(decks = 1, random = Math.random) {
   return cards;
 }
 export function createSession(config = {}) {
-  const mode = config.mode==='flash'?'sprint':MODES.includes(config.mode)?config.mode:'training';
+  const mode = config.mode==='truecount'?'training':config.mode==='flash'?'sprint':MODES.includes(config.mode)?config.mode:'training';
   const decks = mode==='grow'?2:config.decks ?? 1;
   const shoe = createShoe(decks,config.random);
   const sprintLength=Number.isFinite(Number(config.sprintLength))?Math.min(30,Math.max(5,Math.round(Number(config.sprintLength)))):15;
-  const countType=mode==='truecount'?'true':'running';
+  const countType=mode==='training'&&(config.countType==='true'||config.mode==='truecount')?'true':'running';
   return {shoe,mode,decks,countType,limit:mode==='sprint'?sprintLength:countType==='true'?Math.floor(shoe.length*.75):shoe.length,index:0,count:0,checks:[],assisted:false,speed:mode==='grow'?2:config.speed??1.5,peakSpeed:mode==='grow'?2:config.speed??1.5,growths:0};
 }
 export function deal(session) {
@@ -48,8 +48,9 @@ export function checkAnswer(session, input, assisted = false) {
 }
 export function filterSessions(sessions,mode='all') {return mode==='all'?sessions:sessions.filter(s=>s.mode===mode);}
 export function trimHistory(sessions) {
-  const totals={training:0,sprint:0,grow:0,realistic:0,truecount:0};
-  return sessions.filter(s=>MODES.includes(s.mode) && ++totals[s.mode]<=100);
+  const totals={training:0,sprint:0,grow:0,realistic:0};
+  // Keep both former 100-session histories when the two drills are merged.
+  return sessions.map(s=>s.mode==='truecount'?{...s,mode:'training',countType:'true'}:s).filter(s=>s.mode in totals && ++totals[s.mode]<=(s.mode==='training'?200:100));
 }
 export function summarize(sessions,mode='all') {
   sessions=filterSessions(sessions,mode);

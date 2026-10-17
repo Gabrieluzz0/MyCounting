@@ -42,7 +42,7 @@ export function missionsForDay(key,seed='mycounting') {
  const random=randomSource(hash(seed+'|'+key));
  return [0,1,2].map(group=>{const choices=MISSION_POOL.filter(m=>m.group===group);return {...choices[Math.floor(random()*choices.length)],claimed:false};});
 }
-const freshMetrics=()=>({sessions:0,cards:0,correctChecks:0,successes:0,modes:{training:0,sprint:0,grow:0,realistic:0,truecount:0},perfect:{training:0,sprint:0,grow:0,realistic:0,truecount:0}});
+const freshMetrics=()=>({sessions:0,cards:0,correctChecks:0,successes:0,modes:{training:0,sprint:0,grow:0,realistic:0},perfect:{training:0,sprint:0,grow:0,realistic:0}});
 export function newProgress(seed,now=new Date()) {return {schema:XP_SCHEMA,xp:0,totalCompleted:0,totalSuccess:0,totalCards:0,activityDays:[],bestStreak:0,ledger:[],daily:{day:dayKey(now),metrics:freshMetrics(),missions:missionsForDay(dayKey(now),seed)}};}
 export function refreshDay(progress,seed,now=new Date()) {const today=dayKey(now);if(progress.daily.day!==today){progress.daily={day:today,metrics:freshMetrics(),missions:missionsForDay(today,seed)};return true;}return false;}
 export function streakInfo(progress,now=new Date()) {
@@ -53,6 +53,7 @@ export function streakInfo(progress,now=new Date()) {
 }
 export function missionValue(mission,metrics) {if(mission.metric==='distinctModes')return Object.values(metrics.modes).filter(n=>n>0).length;return mission.metric.split('.').reduce((v,k)=>v?.[k],metrics) || 0;}
 export function applyCompletion(progress,record,seed,now=new Date(),options={}) {
+ if(record.mode==='truecount')record={...record,mode:'training',countType:'true'};
  const id=record.id;
  if(!id || progress.ledger.includes(id))return {duplicate:true,baseXP:0,missionXP:0,totalXP:0,completed:[],levelUp:false};
  refreshDay(progress,seed,now);
@@ -80,7 +81,7 @@ export function restoreProgress(raw,seed,history=[],now=new Date()) {
   if(raw.daily?.day===fresh.daily.day){
    const old=raw.daily.metrics || {};const metrics=freshMetrics();
    for(const key of ['sessions','cards','correctChecks','successes'])metrics[key]=safeInt(old[key]);
-   for(const type of ['modes','perfect'])for(const mode of ['training','truecount','sprint','grow','realistic'])metrics[type][mode]=safeInt(old[type]?.[mode]);
+   for(const type of ['modes','perfect'])for(const mode of ['training','sprint','grow','realistic'])metrics[type][mode]=safeInt(old[type]?.[mode])+(mode==='training'?safeInt(old[type]?.truecount):0);
    const claimed=new Set(Array.isArray(raw.daily.missions)?raw.daily.missions.filter(m=>m?.claimed===true).map(m=>m.id):[]);
    p.daily={...fresh.daily,metrics,missions:fresh.daily.missions.map(m=>({...m,claimed:claimed.has(m.id)}))};
   }
