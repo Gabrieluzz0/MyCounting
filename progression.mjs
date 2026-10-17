@@ -25,14 +25,14 @@ const MISSION_POOL = [
  {id:'start',group:0,title:'Una carta alla volta',description:'Completa una sessione in qualsiasi modalità.',metric:'sessions',target:1,xp:25,icon:'play'},
  {id:'fifty',group:0,title:'Scalda lo sguardo',description:'Osserva 50 carte in sessioni completate.',metric:'cards',target:50,xp:30,icon:'layers'},
  {id:'sprint-one',group:0,title:'Un piccolo Sprint',description:'Completa una sessione Sprint.',metric:'modes.sprint',target:1,xp:25,icon:'bolt'},
- {id:'training-one',group:0,title:'Prendi il tuo ritmo',description:'Completa una sessione Allenamento.',metric:'modes.training',target:1,xp:35,icon:'layers'},
+ {id:'training-one',group:0,title:'Prendi il tuo ritmo',description:'Completa una sessione Training.',metric:'modes.training',target:1,xp:35,icon:'layers'},
  {id:'five-checks',group:1,title:'Cinque conferme',description:'Dai 5 risposte corrette senza aiuti, in sessioni completate.',metric:'correctChecks',target:5,xp:40,icon:'target'},
  {id:'hundred',group:1,title:'Oltre il primo mazzo',description:'Osserva 104 carte in sessioni completate.',metric:'cards',target:104,xp:45,icon:'layers'},
  {id:'mix',group:1,title:'Cambia prospettiva',description:'Completa sessioni in 2 modalità diverse.',metric:'distinctModes',target:2,xp:45,icon:'grid'},
  {id:'two-perfect',group:1,title:'Doppia precisione',description:'Concludi 2 sessioni senza errori e senza aiuti.',metric:'successes',target:2,xp:50,icon:'check'},
  {id:'grow-one',group:2,title:'Lascia crescere il ritmo',description:'Completa una sessione Grow.',metric:'modes.grow',target:1,xp:65,icon:'grow'},
  {id:'grow-perfect',group:2,title:'Grow, senza perdere il filo',description:'Concludi una sessione Grow senza errori.',metric:'perfect.grow',target:1,xp:85,icon:'grow'},
- {id:'training-perfect',group:2,title:'Un sabot di precisione',description:'Concludi un Allenamento senza errori e senza aiuti.',metric:'perfect.training',target:1,xp:65,icon:'target'},
+ {id:'training-perfect',group:2,title:'Un sabot di precisione',description:'Concludi un Training senza errori e senza aiuti.',metric:'perfect.training',target:1,xp:65,icon:'target'},
  {id:'sprint-three',group:2,title:'Tre colpi d’occhio',description:'Concludi 3 Sprint senza errori.',metric:'perfect.sprint',target:3,xp:55,icon:'bolt'},
  {id:'double-shoe',group:2,title:'Duecento e oltre',description:'Osserva 208 carte in sessioni completate.',metric:'cards',target:208,xp:65,icon:'layers'}
 ];
