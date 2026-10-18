@@ -4,16 +4,17 @@ export const SUITS = ['♠','♥','♦','♣'];
 export const MODES = ['training','truecount','sprint','grow','realistic'];
 export const COUNTING_METHODS = {
   hilo:{name:'Hi-Lo',trueCount:true,tags:{A:-1,2:1,3:1,4:1,5:1,6:1,7:0,8:0,9:0,10:-1,J:-1,Q:-1,K:-1}},
-  ko:{name:'KO',trueCount:false,tags:{A:-1,2:1,3:1,4:1,5:1,6:1,7:1,8:0,9:0,10:-1,J:-1,Q:-1,K:-1}},
   zen:{name:'Zen',trueCount:true,tags:{A:-1,2:1,3:1,4:2,5:2,6:2,7:1,8:0,9:0,10:-2,J:-2,Q:-2,K:-2}},
-  omega2:{name:'Omega II',trueCount:true,tags:{A:0,2:1,3:1,4:2,5:2,6:2,7:1,8:0,9:-1,10:-2,J:-2,Q:-2,K:-2}}
+  halves:{name:'Wong Halves',trueCount:true,tags:{A:-1,2:.5,3:1,4:1,5:1.5,6:1,7:.5,8:0,9:-.5,10:-1,J:-1,Q:-1,K:-1}}
 };
+export const HISTORICAL_METHOD_NAMES={hilo:'Hi-Lo',zen:'Zen',halves:'Wong Halves',ko:'KO',omega2:'Omega II'};
+export const historyMethod = method => Object.hasOwn(HISTORICAL_METHOD_NAMES,method)?method:'hilo';
 export const normalizeMethod = method => Object.hasOwn(COUNTING_METHODS,method)?method:'hilo';
 export const supportsTrueCount = method => COUNTING_METHODS[normalizeMethod(method)].trueCount;
 export const normalizeCountType = (type,method='hilo') => supportsTrueCount(method)&&['true','both'].includes(type)?type:'running';
-export const initialCount = (method,decks) => normalizeMethod(method)==='ko'?4-4*decks:0;
+export const initialCount = () => 0;
 export const valueOf = (rank,method='hilo') => COUNTING_METHODS[normalizeMethod(method)].tags[rank];
-export const signed = number => number > 0 ? `+${number}` : number < 0 ? `−${Math.abs(number)}` : '0';
+export const signed = number => number > 0 ? `+${String(number).replace('.',',')}` : number < 0 ? `−${String(Math.abs(number)).replace('.',',')}` : '0';
 export function createShoe(decks = 1, random = Math.random, countingMethod='hilo') {
   if (!Number.isInteger(decks) || decks < 1 || decks > 8) throw new RangeError('Scegli da 1 a 8 mazzi.');
   const cards = [];
@@ -42,13 +43,13 @@ export function trueCount(session) {
   const remaining = session.shoe.length - (session.mode==='realistic'?session.dealt:session.index);
   return remaining > 0 ? session.count / (remaining/52) : null;
 }
-export function parseAnswer(input) {
-  const normalized=String(input).trim().replace(/−/g,'-');
-  return /^[+-]?\d{1,4}$/.test(normalized) ? Number(normalized) : null;
+export function parseAnswer(input,allowHalves=false) {
+  const normalized=String(input).trim().replace(/−/g,'-').replace(',','.');
+  return (allowHalves?/^[+-]?\d{1,4}(?:\.[05])?$/:/^[+-]?\d{1,4}$/).test(normalized)?Number(normalized):null;
 }
 export function checkAnswer(session, input, assisted = false) {
   const both=session.countType==='both';
-  const answer = parseAnswer(both?input?.running:input);
+  const answer = parseAnswer(both?input?.running:input,session.countingMethod==='halves'&&session.countType!=='true');
   if(answer === null) return null;
   const rawActual=session.countType==='true'?trueCount(session):session.count;
   if(rawActual===null)return null;
@@ -70,7 +71,7 @@ export function filterSessions(sessions,mode='all') {return mode==='all'?session
 export function trimHistory(sessions) {
   const totals={training:0,sprint:0,grow:0,realistic:0};
   // Keep both former 100-session histories when the two drills are merged.
-  return sessions.map(s=>({...s,countingMethod:normalizeMethod(s.countingMethod),...(s.mode==='truecount'?{mode:'training',countType:'true'}:{})})).filter(s=>s.mode in totals && ++totals[s.mode]<=(s.mode==='training'?200:100));
+  return sessions.map(s=>({...s,countingMethod:historyMethod(s.countingMethod),...(s.mode==='truecount'?{mode:'training',countType:'true'}:{})})).filter(s=>s.mode in totals && ++totals[s.mode]<=(s.mode==='training'?200:100));
 }
 export function summarize(sessions,mode='all') {
   sessions=filterSessions(sessions,mode);
@@ -79,4 +80,13 @@ export function summarize(sessions,mode='all') {
   let streak=0,best=0;
   for(const check of [...sessions].reverse().flatMap(s=>s.checks || []).filter(c=>!c.assisted)) {streak=check.correct?streak+1:0;best=Math.max(best,streak);}
   return {sessions:sessions.length,cards:sessions.reduce((n,s)=>n+s.cards,0),checks:checks.length,correct,accuracy:checks.length?Math.round(correct/checks.length*100):null,best};
+}
+
+/** Accept half-point RC only for Halves; TC targets remain truncated integers. */
+export function validCheckResult(c,method='hilo'){
+ if(!c||typeof c!=='object'||typeof c.correct!=='boolean'||typeof c.assisted!=='boolean')return false;
+ const factor=method==='halves'&&c.countType!=='true'?2:1;
+ const valid=v=>Number.isFinite(v)&&Math.abs(v)<10000&&Number.isInteger(v*factor);
+ if(!valid(c.answer)||!valid(c.actual))return false;
+ return c.countType!=='both'||(Number.isInteger(c.trueAnswer)&&Number.isInteger(c.trueActual)&&c.correct===(c.answer===c.actual&&c.trueAnswer===c.trueActual));
 }
