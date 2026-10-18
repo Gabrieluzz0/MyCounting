@@ -17,9 +17,9 @@ export function sessionXP(record) {
   if(['training','truecount'].includes(record.mode) && record.assisted)return record.finalCorrect && record.checks?.length && record.checks.every(c=>c.correct)?3:0;
   if(!perfectSession(record))return 0;
   if(record.mode==='sprint')return Math.round(10+Math.min(30,Math.max(5,record.cards))*2/3);
-  if(['training','truecount'].includes(record.mode))return Math.round(70*Math.min(8,Math.max(1,record.decks))*(record.mode==='truecount'||record.countType==='true'?.75:1));
+  if(['training','truecount'].includes(record.mode))return Math.round(70*Math.min(8,Math.max(1,record.decks))*(record.mode==='truecount'||['true','both'].includes(record.countType)?.75:1));
   if(record.mode==='realistic')return 25*Math.min(5,Math.max(1,record.rounds||5));
-  return record.mode==='grow'?220:0;
+  return record.mode==='grow'?(['true','both'].includes(record.countType)?165:220):0;
 }
 const MISSION_POOL = [
  {id:'start',group:0,title:'Una carta alla volta',description:'Completa una sessione in qualsiasi modalità.',metric:'sessions',target:1,xp:25,icon:'play'},
