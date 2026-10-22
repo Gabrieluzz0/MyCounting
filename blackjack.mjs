@@ -1,4 +1,4 @@
-/** A local blackjack table for counting practice. No stakes or payouts. S17, hit/stand only. */
+/** A local blackjack table for counting practice. No stakes or payouts. S17, dealer blackjack check, hit/stand only. */
 import {createShoe,normalizeMethod,normalizeCountType,initialCount} from './engine.mjs';
 export function handValue(cards){let total=0,aces=0;for(const card of cards){if(card.hidden)continue;if(card.rank==='A'){total+=11;aces++;}else total+=['K','Q','J'].includes(card.rank)?10:Number(card.rank);}while(total>21&&aces>0){total-=10;aces--;}return {total,soft:aces>0,bust:total>21,blackjack:cards.length===2&&total===21};}
 export function createTableSession(config={}){const decks=config.decks??6,countingMethod=normalizeMethod(config.countingMethod),shoe=createShoe(decks,config.random,countingMethod),countStart=initialCount(countingMethod,decks);return {mode:'realistic',countType:normalizeCountType(config.countType,countingMethod),countingMethod,countStart,decks,shoe,index:0,dealt:0,count:countStart,limit:shoe.length,checks:[],assisted:false,speed:config.speed??1.5,peakSpeed:config.speed??1.5,growths:0,round:0,maxRounds:5,hands:[[],[],[]],dealer:[],visibleCards:[],stage:'ready',queue:[],turn:0,outcomes:[],finished:false};}
@@ -8,10 +8,12 @@ function canDrawTableCard(s){return s.dealt<s.shoe.length-(s.countType!=='runnin
 function drawTableCard(s,seat,hidden=false){if(!canDrawTableCard(s))return null;const card={...s.shoe[s.dealt++],hidden};(seat===3?s.dealer:s.hands[seat]).push(card);if(!hidden)expose(s,card);return card;}
 function revealDealer(s){const hole=s.dealer.find(card=>card.hidden);if(hole){hole.hidden=false;expose(s,hole);return hole;}return null;}
 function finishTableRound(s){const d=handValue(s.dealer);s.outcomes=s.hands.map(cards=>{const p=handValue(cards);if(p.bust)return 'Sballato';if(d.blackjack)return p.blackjack?'Parità':'Banco';if(p.blackjack)return 'Blackjack';if(d.bust||p.total>d.total)return 'Mano vinta';return p.total===d.total?'Parità':'Banco';});if(s.countType!=='running'&&!canDrawTableCard(s))s.outcomes=s.hands.map(()=>'Fine sabot');s.stage='roundEnd';s.finished=s.round>=s.maxRounds||s.shoe.length-s.dealt<20;return {type:'roundEnd'};}
+// Automatic seats use a fixed hit/stand routine; no count-based decisions or stakes.
+export function automaticHit(cards,upcard){const value=handValue(cards);const up=upcard?.rank==='A'?11:['10','J','Q','K'].includes(upcard?.rank)?10:Number(upcard?.rank)||10;if(value.total>=21)return false;if(value.soft)return value.total<18||(value.total===18&&up>=9);if(value.total<=11)return true;if(value.total>=17)return false;if(value.total===12)return up<4||up>6;return up<2||up>6;}
 export function advanceTable(s){
- if(s.stage==='dealing'){const event=s.queue.shift();if(event){const card=drawTableCard(s,event.seat,event.hidden);return {type:'card',seat:event.seat,hidden:event.hidden,card};}s.stage='players';s.turn=0;}
+ if(s.stage==='dealing'){const event=s.queue.shift();if(event){const card=drawTableCard(s,event.seat,event.hidden);return {type:'card',seat:event.seat,hidden:event.hidden,card};}const natural=handValue(s.dealer.map(c=>({...c,hidden:false}))).blackjack;s.stage=natural?'reveal':'players';s.turn=0;}
  if(s.stage==='players'){
-  while(s.turn<3){const value=handValue(s.hands[s.turn]);if(value.total>=21||!canDrawTableCard(s)){s.turn++;continue;}if(s.turn===1){s.stage='player';return {type:'player'};}if(value.total<17){const card=drawTableCard(s,s.turn);return {type:'card',seat:s.turn,card};}s.turn++;}
+  while(s.turn<3){const value=handValue(s.hands[s.turn]);if(value.total>=21||!canDrawTableCard(s)){s.turn++;continue;}if(s.turn===1){s.stage='player';return {type:'player'};}if(automaticHit(s.hands[s.turn],s.dealer[0])){const card=drawTableCard(s,s.turn);return {type:'card',seat:s.turn,card};}s.turn++;}
   s.stage='reveal';
  }
  if(s.stage==='reveal'){const card=revealDealer(s);s.stage='dealer';return {type:'reveal',seat:3,card};}
