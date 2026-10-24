@@ -24,13 +24,13 @@ export function createShoe(decks = 1, random = Math.random, countingMethod='hilo
 }
 export function createSession(config = {}) {
   const mode = config.mode==='truecount'?'training':config.mode==='flash'?'sprint':MODES.includes(config.mode)?config.mode:'training';
-  const decks = mode==='grow'?2:config.decks ?? 1;
+  const decks = mode==='grow'?3:config.decks ?? 1;
   const countingMethod=normalizeMethod(config.countingMethod);
   const shoe = createShoe(decks,config.random,countingMethod);
   const sprintLength=Number.isFinite(Number(config.sprintLength))?Math.min(30,Math.max(5,Math.round(Number(config.sprintLength)))):15;
   const countType=normalizeCountType(config.mode==='truecount'?'true':config.countType,countingMethod);
   const countStart=initialCount(countingMethod,decks);
-  return {shoe,mode,decks,countType,countingMethod,countStart,limit:mode==='sprint'?sprintLength:countType!=='running'?Math.floor(shoe.length*.75):shoe.length,index:0,count:countStart,checks:[],assisted:false,speed:mode==='grow'?2:config.speed??1.5,peakSpeed:mode==='grow'?2:config.speed??1.5,growths:0};
+  return {shoe,mode,decks,countType,countingMethod,countStart,limit:mode==='sprint'?sprintLength:mode==='grow'||countType!=='running'?Math.floor(shoe.length*.75):shoe.length,index:0,count:countStart,checks:[],assisted:false,speed:mode==='grow'?2:config.speed??1.5,peakSpeed:mode==='grow'?2:config.speed??1.5,growths:0};
 }
 export function deal(session) {
   if(session.index >= session.limit) return null;

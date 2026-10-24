@@ -17,7 +17,8 @@ export function sessionXP(record) {
   if(['training','truecount'].includes(record.mode) && record.assisted)return record.finalCorrect && record.checks?.length && record.checks.every(c=>c.correct)?3:0;
   if(record.mode==='grow'){
     const checks=record.checks||[];if(record.assisted||!checks.length||!Number.isFinite(record.cards)||record.cards<=0)return 0;
-    const limit=['true','both'].includes(record.countType)?78:104,maxXP=limit===78?165:220;
+    // Two-deck records retain their original reward scale when restored.
+    const limit=record.decks===3?117:['true','both'].includes(record.countType)?78:104,maxXP=Math.round(220*limit/104);
     const accuracy=checks.filter(c=>c.correct&&!c.assisted).length/checks.length;
     return Math.round(maxXP*Math.min(1,record.cards/limit)*(.2+.8*accuracy));
   }
