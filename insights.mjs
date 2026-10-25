@@ -9,7 +9,7 @@ export function recentAccuracy(rows){return rows.filter(s=>sessionAccuracy(s)!==
 export function activityDays(rows,now=new Date(),length=14){const totals=new Map();for(const s of rows){const key=dayKey(new Date(s.date)),old=totals.get(key)||{sessions:0,cards:0};old.sessions++;old.cards+=s.cards;totals.set(key,old);}return Array.from({length},(_,i)=>{const date=new Date(now.getFullYear(),now.getMonth(),now.getDate()-(length-i-1));return {day:dayKey(date),label:date.toLocaleDateString('it-IT',{day:'numeric',month:'short'}),...(totals.get(dayKey(date))||{sessions:0,cards:0})};});}
 export function latestSession(rows){return rows.reduce((latest,s)=>!latest||new Date(s.date)>new Date(latest.date)?s:latest,null);}
 
-/** Badges use lifetime progress; performance records use retained, unaided completions. */
+/** Badge milestones use lifetime totals; completed sessions count even with errors. */
 export function selectAchievements(progress={},rows=[]){
  const safe=n=>Number.isFinite(n)&&n>0?n:0;
  const totals={sessions:safe(progress.totalCompleted),perfect:safe(progress.totalSuccess),cards:safe(progress.totalCards),streak:safe(progress.bestStreak)};
@@ -27,22 +27,20 @@ export function selectAchievements(progress={},rows=[]){
   ['streak-seven','La tua settimana','Raggiungi una streak di 7 giorni.','fire','streak',7,'giorni'],
   ['streak-thirty','Un mese di costanza','Raggiungi una streak di 30 giorni.','fire','streak',30,'giorni']
  ];
- const badges=definitions.map(([id,title,description,icon,metric,target,unit])=>({id,title,description,icon,target,unit,current:Math.min(target,totals[metric]),earned:totals[metric]>=target}));
- const clean=rows.filter(s=>!s.assisted&&s.finalCorrect&&s.checks?.length&&s.checks.every(c=>c.correct&&!c.assisted));
- const auto=clean.filter(s=>!s.manual&&Number.isFinite(s.speed)&&s.speed>0);
- const best=(list,metric,lower=false)=>list.reduce((winner,row)=>!winner||(lower?metric(row)<metric(winner):metric(row)>metric(winner))?row:winner,null);
- const training=best(auto.filter(s=>['training','truecount'].includes(s.mode)&&s.cards>=39),s=>s.speed,true);
- const sprint=best(auto.filter(s=>s.mode==='sprint'&&s.cards>=15),s=>s.speed,true);
- const grow=best(rows.filter(s=>s.mode==='grow'&&!s.assisted&&s.cards>=13&&Number.isFinite(s.peakSpeed)&&s.peakSpeed>0),s=>s.peakSpeed,true);
- const shoe=best(clean,s=>s.cards);
- const accuracy=best(rows.filter(s=>!s.assisted&&(s.checks||[]).filter(c=>!c.assisted).length>=5),s=>sessionAccuracy(s));
- const records=[
-  {id:'streak',title:'Streak più lunga',icon:'fire',value:totals.streak||null,unit:'giorni',detail:'Giorni consecutivi · progresso complessivo',record:null},
-  {id:'grow',title:'Ritmo migliore · Grow',icon:'grow',value:grow?.peakSpeed??null,unit:'s / carta',detail:'Velocità raggiunta in una sessione conclusa',record:grow},
-  {id:'training',title:'Ritmo migliore · Training',icon:'layers',value:training?.speed??null,unit:'s / carta',detail:'Almeno 39 carte · perfetta · automatica',record:training},
-  {id:'sprint',title:'Ritmo migliore · Sprint',icon:'bolt',value:sprint?.speed??null,unit:'s / carta',detail:'Almeno 15 carte · perfetta · automatica',record:sprint},
-  {id:'shoe',title:'Sequenza perfetta più lunga',icon:'check',value:shoe?.cards??null,unit:'carte',detail:'Sessione senza errori e senza aiuti',record:shoe},
-  {id:'accuracy',title:'Precisione migliore',icon:'target',value:accuracy?sessionAccuracy(accuracy):null,unit:'%',detail:'Almeno 5 verifiche · senza aiuti',record:accuracy}
- ];
- return {badges,records,earned:badges.filter(b=>b.earned).length};
+ const badges=definitions.map(([id,title,description,icon,metric,target,unit])=>({id,title,description,icon,group:'all',target,unit,current:Math.min(target,totals[metric]),earned:totals[metric]>=target}));
+ for(const [mode,name,icon] of [['training','Training','layers'],['sprint','Sprint','bolt'],['grow','Grow','grow'],['realistic','Realistic','table']]){
+  const values=progress.modeTotals?.[mode]||{};
+  const milestones=[
+   ['first','Primo allenamento','sessions',1,'sessioni'],
+   ['ten','Dieci al tavolo','sessions',10,'sessioni'],
+   ['twentyfive','Nel tuo ritmo','sessions',25,'sessioni'],
+   ['fifty','Cinquanta sessioni','sessions',50,'sessioni'],
+   ['perfect-first','Il conto perfetto','perfect',1,'perfette'],
+   ['perfect-ten','Precisione costante','perfect',10,'perfette'],
+   ['cards-fivehundred','Cinquecento carte','cards',500,'carte'],
+   ['cards-twothousandfivehundred','Uno sguardo esperto','cards',2500,'carte']
+  ];
+  for(const [key,title,metric,target,unit] of milestones){const current=safe(values[metric]);const description=metric==='sessions'?`Concludi ${target} ${target===1?'allenamento':'allenamenti'} in modalità ${name}, anche con errori o conteggio visibile.`:metric==='perfect'?`Concludi ${target} ${target===1?'sessione perfetta':'sessioni perfette'} in modalità ${name}, con tutte le verifiche corrette e senza aiuti.`:`Osserva ${target.toLocaleString('it-IT')} carte in allenamenti conclusi in modalità ${name}, anche con errori o conteggio visibile.`;badges.push({id:mode+'-'+key,title,description,icon,group:mode,target,unit,current:Math.min(target,current),earned:current>=target});}
+ }
+ return {badges,earned:badges.filter(b=>b.earned).length};
 }

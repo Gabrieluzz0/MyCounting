@@ -50,7 +50,10 @@ export function missionsForDay(key,seed='mycounting') {
  return [0,1,2].map(group=>{const choices=MISSION_POOL.filter(m=>m.group===group);return {...choices[Math.floor(random()*choices.length)],claimed:false};});
 }
 const freshMetrics=()=>({sessions:0,cards:0,correctChecks:0,successes:0,modes:{training:0,sprint:0,grow:0,realistic:0},perfect:{training:0,sprint:0,grow:0,realistic:0}});
-export function newProgress(seed,now=new Date()) {return {schema:XP_SCHEMA,xp:0,totalCompleted:0,totalSuccess:0,totalCards:0,activityDays:[],bestStreak:0,ledger:[],daily:{day:dayKey(now),metrics:freshMetrics(),missions:missionsForDay(dayKey(now),seed)}};}
+const MODE_KEYS=['training','sprint','grow','realistic'];
+const freshModeTotals=()=>Object.fromEntries(MODE_KEYS.map(mode=>[mode,{sessions:0,perfect:0,cards:0}]));
+function retainedModeTotals(history=[]){const totals=freshModeTotals(),seen=new Set();for(const record of history){const mode=record.mode==='truecount'?'training':record.mode;if(!totals[mode]||record.id&&seen.has(record.id))continue;if(record.id)seen.add(record.id);totals[mode].sessions++;totals[mode].perfect+=Number(perfectSession(record));totals[mode].cards+=safeInt(record.cards);}return totals;}
+export function newProgress(seed,now=new Date()) {return {schema:XP_SCHEMA,xp:0,totalCompleted:0,totalSuccess:0,totalCards:0,modeTotals:freshModeTotals(),activityDays:[],bestStreak:0,ledger:[],daily:{day:dayKey(now),metrics:freshMetrics(),missions:missionsForDay(dayKey(now),seed)}};}
 export function refreshDay(progress,seed,now=new Date()) {const today=dayKey(now);if(progress.daily.day!==today){progress.daily={day:today,metrics:freshMetrics(),missions:missionsForDay(today,seed)};return true;}return false;}
 export function streakInfo(progress,now=new Date()) {
  const today=dayKey(now),days=new Set(progress.activityDays),todayDone=days.has(today);
@@ -68,6 +71,7 @@ export function applyCompletion(progress,record,seed,now=new Date(),options={}) 
  const baseXP=sessionXP(record),success=perfectSession(record),today=dayKey(now);
  progress.ledger.push(id);progress.ledger=progress.ledger.slice(-1000);
  progress.totalCompleted++;progress.totalCards+=record.cards;progress.totalSuccess+=Number(success);
+ progress.modeTotals??=freshModeTotals();const modeTotal=progress.modeTotals[record.mode];if(modeTotal){modeTotal.sessions++;modeTotal.perfect+=Number(success);modeTotal.cards+=record.cards;}
  if(!progress.activityDays.includes(today)){progress.activityDays.push(today);progress.activityDays.sort();progress.activityDays=progress.activityDays.slice(-3660);}
  progress.bestStreak=Math.max(progress.bestStreak,streakInfo(progress,now).current);
  const guided=['training','truecount'].includes(record.mode) && record.assisted;
@@ -85,6 +89,10 @@ export function restoreProgress(raw,seed,history=[],now=new Date()) {
  const fresh=newProgress(seed,now);
  if(raw?.schema===XP_SCHEMA && Number.isSafeInteger(raw.xp) && raw.xp>=0 && Array.isArray(raw.activityDays)) {
   const p={...fresh,xp:Math.min(1e9,raw.xp),totalCompleted:safeInt(raw.totalCompleted),totalSuccess:safeInt(raw.totalSuccess),totalCards:safeInt(raw.totalCards),bestStreak:safeInt(raw.bestStreak),activityDays:[...new Set(raw.activityDays.filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)))].sort().slice(-3660),ledger:Array.isArray(raw.ledger)?raw.ledger.filter(id=>typeof id==='string').slice(-1000):[]};
+  // Previous accounts recover mode milestones from retained sessions once.
+  // Thereafter counters survive history cleanup and bounded history retention.
+  const retained=retainedModeTotals(history);p.modeTotals=freshModeTotals();
+  for(const mode of MODE_KEYS)for(const metric of ['sessions','perfect','cards'])p.modeTotals[mode][metric]=safeInt(raw.modeTotals?.[mode]?.[metric],retained[mode][metric]);
   if(raw.daily?.day===fresh.daily.day){
    const old=raw.daily.metrics || {};const metrics=freshMetrics();
    for(const key of ['sessions','cards','correctChecks','successes'])metrics[key]=safeInt(old[key]);
