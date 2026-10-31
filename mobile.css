@@ -470,3 +470,42 @@ body.settings-open{overflow:hidden}
  .training-actions>.session-controls{gap:6px}
 }
 @media(max-width:760px){.realistic-stage>.table-topline{justify-content:flex-end}}
+/* Shared desktop palette; phone geometry stays unchanged. */
+@media(max-width:760px){
+ :root{--phone-surface:var(--panel);--phone-line:var(--line)}
+ .topbar{background:var(--bg)}
+ #header-streak-button,#header-account,.header-level-display{background:#273023;border-color:#48563c}
+ #primary-navigation{background:var(--panel);border-top-color:var(--line);box-shadow:none}
+ #primary-navigation .nav-item{color:var(--muted)}
+ #primary-navigation .nav-item.active{background:#36412c;color:#d5eaa7}
+ .home-welcome>.home-date{color:var(--muted)}
+ button.home-banner{background:radial-gradient(ellipse at 82% 65%,#8ea86612,transparent 57%),var(--panel);color:var(--ink);box-shadow:none;border-color:var(--line)}
+ .home-banner .home-eyebrow{color:var(--muted)}
+ .home-banner .home-banner-title{color:var(--ink)}
+ .home-banner .home-banner-title em{color:var(--lime)}
+ .home-banner .home-banner-cue{color:#b5c99c}
+ .home-banner .home-card{border-color:#e0e6d6;box-shadow:0 13px 25px #0d140b3b}
+ .home-summary>.home-info-panel,.home-bottom>.home-info-panel{background:var(--panel);border-color:var(--line)}
+ .home-summary>.home-level:first-child{background:radial-gradient(ellipse at 5% 0%,#bedb8620,transparent 80%),var(--panel);border-color:#92aa6680}
+ .home-level #dashboard-rank{background:#b9d58c10;color:#d4e6b5}
+ .home-summary .home-level-value>strong{color:#d7eead}
+ .home-level .home-total{color:var(--muted);border-top-color:var(--line)}
+ .home-summary>.home-stat>p{color:var(--muted)}
+ .home-summary>.home-badges-panel{border-left-color:var(--line)}
+ .workspace>.mobile-settings-toggle{background:var(--panel);border-color:var(--line)}
+ .mobile-settings-toggle>svg{color:var(--ink)}
+ .mobile-setup-copy>small{color:var(--muted)}
+ .mobile-settings-toggle>span:last-child:after{color:#b5c99c}
+ .mode-selector .mode-tabs{border-bottom-color:var(--line)}
+ .mode-selector .mode-tabs button{color:var(--muted);background:transparent}
+ .mode-selector .mode-tabs button.selected{color:#e5f3d2;background:linear-gradient(135deg,#abc97e25,#abc97e0b)}
+ .training-panel>.table-stage{background:var(--stage);border-color:var(--line)}
+ .card-scene>.stage-message h2{color:var(--ink)}
+ .mobile-settings-dialog[open]{background:var(--panel);border-color:var(--line)}
+ .mobile-sheet-heading>div>span{color:var(--muted)}
+ .mobile-settings-dialog .settings-group legend{color:#bbd49b}
+ .mobile-settings-dialog .settings-group-heading{color:var(--ink)}
+ #stats-view .stats-mode-tabs>button.selected{background:#bddc9113;border-color:#bddc9140;color:#d4e8b5}
+ .mobile-manual-picker select,.badge-library-mobile>select{background:var(--bg);border-color:var(--line);color:var(--ink)}
+ .lesson-step-number{color:#a4be86}
+}
