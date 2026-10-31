@@ -1,5 +1,5 @@
-const CACHE = 'mycounting-v37.0.0';
-const ASSETS = ['./','./index.html','./styles.css','./app.js','./engine.mjs','./progression.mjs','./backup.mjs','./blackjack.mjs','./insights.mjs','./lessons.mjs','./assets/logo-transparent.webp','./assets/mark-transparent.webp','./favicon.png','./icon-192.png','./icon-512.png','./icon-maskable.png','./manifest.webmanifest'];
+const CACHE = 'mycounting-v39.0.0';
+const ASSETS = ['./','./index.html','./styles.css','./mobile.css','./app.js','./engine.mjs','./progression.mjs','./backup.mjs','./blackjack.mjs','./insights.mjs','./lessons.mjs','./assets/logo-transparent.webp','./assets/mark-transparent.webp','./favicon.png','./icon-192.png','./icon-512.png','./icon-maskable.png','./manifest.webmanifest'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('mycounting-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
