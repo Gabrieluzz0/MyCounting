@@ -1,0 +1,32 @@
+/** Prototype economy. All balances are local test data, never money or entitlements. */
+export const CREDIT_PACKS=[{id:'c100',credits:100,cents:99},{id:'c500',credits:500,cents:399},{id:'c1000',credits:1000,cents:699},{id:'c2000',credits:2000,cents:1199}];
+export const COSMETICS=[
+ {id:'card-jade',kind:'card',name:'Dorso Giada',description:'Un intreccio verde sul dorso delle tue carte.',price:35,value:'jade'},
+ {id:'card-midnight',kind:'card',name:'Dorso Mezzanotte',description:'Blu profondo e dettagli chiari, per le carte coperte.',price:60,value:'midnight'},
+ {id:'card-ruby',kind:'card',name:'Dorso Rubino',description:'Un dorso bordeaux con un motivo diagonale.',price:75,value:'ruby'},
+ {id:'table-night',kind:'table',name:'Tavolo Notturno',description:'Un panno blu scuro per tutti gli allenamenti.',price:90,value:'night'},
+ {id:'table-forest',kind:'table',name:'Tavolo Foresta',description:'Un panno verde intenso e una luce soffusa.',price:90,value:'forest'},
+ {id:'frame-orbit',kind:'frame',name:'Cornice Orbita',description:'Un doppio anello verde attorno alla foto profilo.',price:40,value:'orbit'},
+ {id:'frame-silver',kind:'frame',name:'Cornice Argento',description:'Una cornice argentata per il tuo avatar.',price:65,value:'silver'},
+ {id:'title-focus',kind:'title',name:'Titolo Focus',description:'La scritta «Focus» sotto il tuo nome nella Home e in classifica.',price:25,value:'Focus'},
+ {id:'title-ace',kind:'title',name:'Titolo Asso del conto',description:'Un titolo da mostrare nella Home e in classifica.',price:120,value:'Asso del conto'}
+];
+export const euro=cents=>(cents/100).toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+export function newWallet(level=1){return {credits:0,chips:1000,claimedLevel:Math.max(1,level),ledger:[],owned:[],equipped:{},premium:null};}
+export function validWallet(w){return w&&Number.isSafeInteger(w.credits)&&w.credits>=0&&Number.isFinite(w.chips)&&w.chips>=0&&Number.isSafeInteger(w.claimedLevel)&&Array.isArray(w.ledger)&&Array.isArray(w.owned)&&w.equipped&&typeof w.equipped==='object';}
+function post(w,id,delta,currency='credits'){if(typeof id!=='string'||!id||id.length>180||!Number.isFinite(delta)||currency==='credits'&&!Number.isSafeInteger(delta))throw Error('Movimento non valido.');if(w.ledger.includes(id))return false;const next=w[currency]+delta;if(next<0||next>1e9)throw Error(currency==='chips'?'Chips insufficienti. Usa la ricarica demo.':'Crediti insufficienti.');w[currency]=next;w.ledger.push(id);w.ledger=w.ledger.slice(-2000);return true;}
+export function awardLevels(w,level){if(!Number.isSafeInteger(level)||level<=w.claimedLevel)return 0;const amount=(level-w.claimedLevel)*5;post(w,'levels:'+level,amount);w.claimedLevel=level;return amount;}
+export function buyCredits(w,packId,transactionId){const pack=CREDIT_PACKS.find(p=>p.id===packId);if(!pack)throw Error('Pacchetto non disponibile.');return post(w,'purchase:'+transactionId,pack.credits)?pack.credits:0;}
+export function buyCosmetic(w,id,transactionId){const item=COSMETICS.find(c=>c.id===id);if(!item)throw Error('Articolo non disponibile.');if(w.owned.includes(id))return false;if(!post(w,'cosmetic:'+transactionId,-item.price))return false;w.owned.push(id);w.equipped[item.kind]=id;return true;}
+export function equipCosmetic(w,id){const item=COSMETICS.find(c=>c.id===id);if(!item||!w.owned.includes(id))throw Error('Prima acquista questo articolo.');w.equipped[item.kind]=id;}
+export function premiumActive(w,now=Date.now()){return Boolean(w.premium&&w.premium.until>now);}
+function nextMonth(date){const d=new Date(date),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d.getTime();}
+export function activatePremium(w,now=Date.now()){if(premiumActive(w,now))return 0;const period=new Date(now).toISOString().slice(0,7);const granted=post(w,'premium:'+period,200)?200:0;w.premium={start:now,until:nextMonth(now),renew:true};return granted;}
+export function renewPremiumDemo(w){if(!w.premium)throw Error('Attiva prima Premium.');const start=w.premium.until;const granted=post(w,'premium:'+new Date(start).toISOString().slice(0,7),200)?200:0;w.premium={start,until:nextMonth(start),renew:true};return granted;}
+export function reserveChips(w,id,bet){if(![10,20,50,100].includes(bet))throw Error('Scegli una puntata disponibile.');if(!post(w,'chips-start:'+id,-bet,'chips'))throw Error('Questa mano è già iniziata.');return {id,base:bet,bets:[bet],insurance:0,settled:false};}
+export function extraChips(w,r,index,action){if(r.settled)return false;let extra=0;if(action==='double'||action==='split')extra=r.bets[index];else if(action==='insure')extra=r.base/2;else return true;const id='chips-action:'+r.id+':'+action+':'+index+':'+r.bets.length+':'+r.bets[index];if(!post(w,id,-extra,'chips'))return false;if(action==='double')r.bets[index]*=2;if(action==='split')r.bets.splice(index,1,extra,extra);if(action==='insure')r.insurance=extra;return true;}
+export function settleChips(w,r,outcomes,dealerNatural=false){if(r.settled)return 0;const multipliers={'Blackjack':2.5,'Mano vinta':2,'Parità':1,'Resa':.5,'Fine sabot':1};const returned=r.bets.reduce((n,bet,i)=>n+bet*(multipliers[outcomes[i]]||0),0)+(dealerNatural?r.insurance*3:0);if(!post(w,'chips-settle:'+r.id,returned,'chips'))return 0;r.settled=true;r.returned=returned;r.net=returned-r.bets.reduce((a,b)=>a+b,0)-r.insurance;return returned;}
+export function refillChips(w,id){post(w,'chips-refill:'+id,1000,'chips');}
+const hex=bytes=>Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+export async function passwordProof(password,saltHex,cryptoAPI=globalThis.crypto){if(!cryptoAPI?.subtle)throw Error('Apri la demo su HTTPS o localhost per provare l’accesso.');const salt=saltHex?Uint8Array.from(saltHex.match(/.{2}/g)||[],x=>parseInt(x,16)):cryptoAPI.getRandomValues(new Uint8Array(16));if(salt.length!==16)throw Error('Credenziale demo non valida.');const key=await cryptoAPI.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);const result=await cryptoAPI.subtle.deriveBits({name:'PBKDF2',salt,iterations:210000,hash:'SHA-256'},key,256);return {salt:hex(salt),hash:hex(new Uint8Array(result))};}
+export function leaderboard(rows,current){return [...rows.filter(r=>r.id!==current.id),current].sort((a,b)=>b.xp-a.xp||a.id.localeCompare(b.id)).map((r,i)=>({...r,rank:i+1}));}
