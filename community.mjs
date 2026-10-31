@@ -1,16 +1,19 @@
 /** Prototype economy. All balances are local test data, never money or entitlements. */
 export const CREDIT_PACKS=[{id:'c100',credits:100,cents:99},{id:'c500',credits:500,cents:399},{id:'c1000',credits:1000,cents:699},{id:'c2000',credits:2000,cents:1199}];
 export const COSMETICS=[
- {id:'card-jade',kind:'card',name:'Dorso Giada',description:'Un intreccio verde sul dorso delle tue carte.',price:35,value:'jade'},
- {id:'card-midnight',kind:'card',name:'Dorso Mezzanotte',description:'Blu profondo e dettagli chiari, per le carte coperte.',price:60,value:'midnight'},
- {id:'card-ruby',kind:'card',name:'Dorso Rubino',description:'Un dorso bordeaux con un motivo diagonale.',price:75,value:'ruby'},
- {id:'table-night',kind:'table',name:'Tavolo Notturno',description:'Un panno blu scuro per tutti gli allenamenti.',price:90,value:'night'},
- {id:'table-forest',kind:'table',name:'Tavolo Foresta',description:'Un panno verde intenso e una luce soffusa.',price:90,value:'forest'},
- {id:'frame-orbit',kind:'frame',name:'Cornice Orbita',description:'Un doppio anello verde attorno alla foto profilo.',price:40,value:'orbit'},
- {id:'frame-silver',kind:'frame',name:'Cornice Argento',description:'Una cornice argentata per il tuo avatar.',price:65,value:'silver'},
- {id:'title-focus',kind:'title',name:'Titolo Focus',description:'La scritta «Focus» sotto il tuo nome nella Home e in classifica.',price:25,value:'Focus'},
- {id:'title-ace',kind:'title',name:'Titolo Asso del conto',description:'Un titolo da mostrare nella Home e in classifica.',price:120,value:'Asso del conto'}
+ {id:'avatar-robot',kind:'avatar',name:'Byte',description:'Un piccolo robot come immagine del profilo.',price:35,value:'robot'},
+ {id:'avatar-fox',kind:'avatar',name:'Volpe',description:'Un avatar illustrato, sveglio e curioso.',price:50,value:'fox'},
+ {id:'avatar-cat',kind:'avatar',name:'Micio',description:'Un gatto dall’espressione impassibile.',price:50,value:'cat'},
+ {id:'avatar-space',kind:'avatar',name:'Cosmo',description:'Un astronauta per il tuo profilo.',price:75,value:'space'},
+ {id:'effect-confetti',kind:'effect',name:'Coriandoli',description:'Un’esplosione di coriandoli per ogni verifica corretta.',price:60,value:'confetti'},
+ {id:'effect-stars',kind:'effect',name:'Pioggia di stelle',description:'Una piccola costellazione festeggia le risposte corrette.',price:80,value:'stars'}
 ];
+const RETIRED={ 'card-jade':35,'card-midnight':60,'card-ruby':75,'table-night':90,'table-forest':90,'frame-orbit':40,'frame-silver':65,'title-focus':25,'title-ace':120 };
+export function migrateInventory(w){if(w.catalogVersion===2)return 0;const retired=[...new Set(w.owned)].filter(id=>Object.hasOwn(RETIRED,id));const refund=retired.reduce((sum,id)=>sum+RETIRED[id],0);if(refund)post(w,'catalog-v41-refund',refund);w.owned=w.owned.filter(id=>COSMETICS.some(c=>c.id===id));w.equipped=Object.fromEntries(Object.entries(w.equipped).filter(([kind,id])=>COSMETICS.some(c=>c.kind===kind&&c.id===id)&&w.owned.includes(id)));w.catalogVersion=2;w.catalogRefund=refund;return refund;}
+export function avatarSVG(type){const colors={robot:'#b5d797',fox:'#d8a16b',cat:'#c5cadd',space:'#acd0d7'},ink='#263126',fill=colors[type]||colors.robot;
+ const faces={robot:`<path d="M32 13V7m-4 0h8"/><rect x="14" y="15" width="36" height="35" rx="10"/><path d="M9 25v15m46-15v15M24 42h16"/><rect x="22" y="26" width="5" height="7" rx="2" fill="${ink}"/><rect x="37" y="26" width="5" height="7" rx="2" fill="${ink}"/>`,fox:`<path d="M12 12 27 19h10l15-7-4 31-16 12-16-12Z"/><path d="m16 36 16 7 16-7-16 19Z" fill="#f2ead8" stroke="none"/><path d="m23 29 4 2m10 0 4-2M29 41h6l-3 4Z" fill="${ink}"/>`,cat:`<path d="m14 29-1-18 16 11h6l16-11-1 18c9 26-45 35-36 0Z"/><path d="M22 33h5m10 0h5M29 42l3 3 3-3M10 39l12 2m20 0 12-2"/><path d="m20 20-1 7m26-7 1 7"/>`,space:`<circle cx="32" cy="29" r="22"/><rect x="16" y="18" width="32" height="25" rx="12" fill="#263b43"/><path d="m22 26 6-3" stroke="#d7edf0"/><path d="M20 49v7h24v-7"/><circle cx="38" cy="30" r="2" fill="#d7edf0" stroke="none"/>`};
+ return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="${fill}" stroke="${ink}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">${faces[type]||faces.robot}</g></svg>`;
+}
 export const euro=cents=>(cents/100).toLocaleString('it-IT',{style:'currency',currency:'EUR'});
 export function newWallet(level=1){return {credits:0,chips:1000,claimedLevel:Math.max(1,level),ledger:[],owned:[],equipped:{},premium:null};}
 export function validWallet(w){return w&&Number.isSafeInteger(w.credits)&&w.credits>=0&&Number.isFinite(w.chips)&&w.chips>=0&&Number.isSafeInteger(w.claimedLevel)&&Array.isArray(w.ledger)&&Array.isArray(w.owned)&&w.equipped&&typeof w.equipped==='object';}
@@ -23,7 +26,7 @@ export function premiumActive(w,now=Date.now()){return Boolean(w.premium&&w.prem
 function nextMonth(date){const d=new Date(date),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d.getTime();}
 export function activatePremium(w,now=Date.now()){if(premiumActive(w,now))return 0;const period=new Date(now).toISOString().slice(0,7);const granted=post(w,'premium:'+period,200)?200:0;w.premium={start:now,until:nextMonth(now),renew:true};return granted;}
 export function renewPremiumDemo(w){if(!w.premium)throw Error('Attiva prima Premium.');const start=w.premium.until;const granted=post(w,'premium:'+new Date(start).toISOString().slice(0,7),200)?200:0;w.premium={start,until:nextMonth(start),renew:true};return granted;}
-export function reserveChips(w,id,bet){if(![10,20,50,100].includes(bet))throw Error('Scegli una puntata disponibile.');if(!post(w,'chips-start:'+id,-bet,'chips'))throw Error('Questa mano è già iniziata.');return {id,base:bet,bets:[bet],insurance:0,settled:false};}
+export function reserveChips(w,id,bet){if(!Number.isSafeInteger(bet)||bet<1||bet>100000)throw Error('Componi una puntata da 1 a 100.000 chips.');if(!post(w,'chips-start:'+id,-bet,'chips'))throw Error('Questa mano è già iniziata.');return {id,base:bet,bets:[bet],insurance:0,settled:false};}
 export function extraChips(w,r,index,action){if(r.settled)return false;let extra=0;if(action==='double'||action==='split')extra=r.bets[index];else if(action==='insure')extra=r.base/2;else return true;const id='chips-action:'+r.id+':'+action+':'+index+':'+r.bets.length+':'+r.bets[index];if(!post(w,id,-extra,'chips'))return false;if(action==='double')r.bets[index]*=2;if(action==='split')r.bets.splice(index,1,extra,extra);if(action==='insure')r.insurance=extra;return true;}
 export function settleChips(w,r,outcomes,dealerNatural=false){if(r.settled)return 0;const multipliers={'Blackjack':2.5,'Mano vinta':2,'Parità':1,'Resa':.5,'Fine sabot':1};const returned=r.bets.reduce((n,bet,i)=>n+bet*(multipliers[outcomes[i]]||0),0)+(dealerNatural?r.insurance*3:0);if(!post(w,'chips-settle:'+r.id,returned,'chips'))return 0;r.settled=true;r.returned=returned;r.net=returned-r.bets.reduce((a,b)=>a+b,0)-r.insurance;return returned;}
 export function refillChips(w,id){post(w,'chips-refill:'+id,1000,'chips');}
