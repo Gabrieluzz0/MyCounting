@@ -291,6 +291,18 @@ export const COSMETICS=[
  }
 ];
 export const CHIP_PACKS=[{id:"chips1000",chips:1000,price:100},{id:"chips5000",chips:5000,price:400},{id:"chips10000",chips:10000,price:700}];
+export const CRATES=[{id:'avatar',kind:'avatar',name:'Cassa avatar',price:300},{id:'effect',kind:'effect',name:'Cassa effetti',price:350}];
+export function missingCosmetics(w,kind){return COSMETICS.filter(i=>i.kind===kind&&!w.owned.includes(i.id));}
+export function openCrate(w,crateId,transactionId,random=Math.random){
+ const crate=CRATES.find(c=>c.id===crateId);if(!crate)throw Error('Cassa non disponibile.');
+ const key='crate:'+transactionId,previous=w.crateRewards?.[transactionId];if(previous)return COSMETICS.find(i=>i.id===previous);
+ if(w.ledger.includes(key))return null;if(w.pendingReveal)throw Error('Apri prima la cassa che hai già acquistato.');
+ const items=missingCosmetics(w,crate.kind);if(!items.length)throw Error('Hai già completato questa collezione.');
+ if(w.credits<crate.price)throw Error('Crediti insufficienti.');const roll=random();if(!Number.isFinite(roll)||roll<0||roll>=1)throw Error('Estrazione non disponibile. Riprova.');
+ const item=items[Math.floor(roll*items.length)];if(!post(w,key,-crate.price))return null;
+ w.owned.push(item.id);w.crateRewards??={};w.crateRewards[transactionId]=item.id;w.pendingReveal={id:transactionId,itemId:item.id,kind:crate.kind};return item;
+}
+export function revealCrate(w,transactionId){const reward=w.pendingReveal;if(!reward||reward.id!==transactionId)return null;const item=COSMETICS.find(i=>i.id===reward.itemId);w.pendingReveal=null;return item;}
 const RETIRED={ 'card-jade':35,'card-midnight':60,'card-ruby':75,'table-night':90,'table-forest':90,'frame-orbit':40,'frame-silver':65,'title-focus':25,'title-ace':120 };
 export function migrateInventory(w){if(w.catalogVersion===2)return 0;const retired=[...new Set(w.owned)].filter(id=>Object.hasOwn(RETIRED,id));const refund=retired.reduce((sum,id)=>sum+RETIRED[id],0);if(refund)post(w,'catalog-v41-refund',refund);w.owned=w.owned.filter(id=>COSMETICS.some(c=>c.id===id));w.equipped=Object.fromEntries(Object.entries(w.equipped).filter(([kind,id])=>COSMETICS.some(c=>c.kind===kind&&c.id===id)&&w.owned.includes(id)));w.catalogVersion=2;w.catalogRefund=refund;return refund;}
 export function avatarSVG(type){const colors={robot:'#b5d797',fox:'#d8a16b',cat:'#c5cadd',space:'#acd0d7'},ink='#263126',fill=colors[type]||colors.robot;
